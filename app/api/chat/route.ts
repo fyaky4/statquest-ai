@@ -1,35 +1,47 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const userMessage = body.message;
+    const apiKey = process.env.OPENAI_API_KEY;
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!apiKey) {
+      console.error("OPENAI_API_KEY is missing in the server environment.");
+
       return Response.json(
-        { error: "OPENAI_API_KEY is missing. Check your .env.local file." },
+        {
+          error:
+            "OPENAI_API_KEY is missing from the server environment.",
+        },
         { status: 500 }
       );
     }
 
-    if (!userMessage) {
+    const body = await req.json();
+    const userMessage = body?.message;
+
+    if (
+      !userMessage ||
+      typeof userMessage !== "string" ||
+      !userMessage.trim()
+    ) {
       return Response.json(
         { error: "No message was provided." },
         { status: 400 }
       );
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const openai = new OpenAI({
+      apiKey,
+    });
 
-      messages: [
-        {
-          role: "system",
-          content: `
+    const completion =
+      await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+
+        messages: [
+          {
+            role: "system",
+            content: `
 You are StatQuest AI, a specialized AI tutor for Probability and Statistics for Data Science.
 
 Your role:
@@ -68,23 +80,36 @@ Tutoring rules:
 Tone:
 Supportive, clear, professional, encouraging, and classroom-appropriate.
 `,
-        },
-        {
-          role: "user",
-          content: userMessage,
-        },
-      ],
+          },
+          {
+            role: "user",
+            content: userMessage.trim(),
+          },
+        ],
 
-      temperature: 0.7,
-    });
+        temperature: 0.7,
+      });
+
+    const reply =
+      completion.choices[0]?.message?.content;
+
+    if (!reply) {
+      throw new Error(
+        "OpenAI returned an empty response."
+      );
+    }
 
     return Response.json({
-      reply: completion.choices[0].message.content,
+      reply,
     });
   } catch (error: unknown) {
-    console.error("OPENAI ROUTE ERROR:", error);
+    console.error(
+      "OPENAI ROUTE ERROR:",
+      error
+    );
 
-    let message = "Something went wrong in the API route.";
+    let message =
+      "Something went wrong in the AI Tutor API route.";
 
     if (error instanceof Error) {
       message = error.message;
