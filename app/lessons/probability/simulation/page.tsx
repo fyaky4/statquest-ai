@@ -216,22 +216,7 @@ export default function ProbabilitySimulationPage() {
     }
 
     // ----------------------------------
-    // AWARD XP ONLY ONCE
-    // ----------------------------------
-
-    const { data: xpAwarded, error: xpError } =
-      await supabase.rpc("award_xp_once", {
-        p_student_id: user.id,
-        p_source_type: "lesson",
-        p_source_key: "probability-simulation",
-        p_xp_amount: lesson.xp_reward,
-        p_description: "Completed Probability Simulation lesson",
-      });
-
-    if (xpError) throw xpError;
-
-    // ----------------------------------
-    // MARK LESSON COMPLETE
+    // 1. MARK LESSON COMPLETE FIRST
     // ----------------------------------
 
     const { error: progressError } = await supabase
@@ -247,7 +232,23 @@ export default function ProbabilitySimulationPage() {
     if (progressError) throw progressError;
 
     // ----------------------------------
-    // FIND NEXT LESSON
+    // 2. AWARD XP AFTER COMPLETION EXISTS
+    // ----------------------------------
+
+    const { data: xpAwarded, error: xpError } =
+      await supabase.rpc("award_xp_once", {
+        p_student_id: user.id,
+        p_source_type: "lesson",
+        p_source_key: "probability-simulation",
+        p_xp_amount: lesson.xp_reward,
+        p_description:
+          "Completed Probability Simulation lesson",
+      });
+
+    if (xpError) throw xpError;
+
+    // ----------------------------------
+    // 3. FIND NEXT LESSON
     // ----------------------------------
 
     const { data: nextLesson, error: nextLessonError } =
@@ -261,7 +262,7 @@ export default function ProbabilitySimulationPage() {
     if (nextLessonError) throw nextLessonError;
 
     // ----------------------------------
-    // UNLOCK NEXT LESSON
+    // 4. UNLOCK NEXT LESSON
     // ----------------------------------
 
     const { error: unlockError } = await supabase
@@ -279,6 +280,10 @@ export default function ProbabilitySimulationPage() {
       );
 
     if (unlockError) throw unlockError;
+
+    // ----------------------------------
+    // 5. UPDATE UI
+    // ----------------------------------
 
     setCompleted(true);
 
